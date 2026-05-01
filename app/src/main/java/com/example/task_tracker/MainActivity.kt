@@ -3,8 +3,10 @@ package com.example.task_tracker
 import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
@@ -20,8 +22,9 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.NavigationBar
+import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarDuration
@@ -58,6 +61,12 @@ data class Lesson(
     val room: String,
     val completed: Boolean = false
 )
+
+sealed interface Screen {
+    data object Schedule : Screen
+    data object About : Screen
+    data class Details(val lessonIndex: Int) : Screen
+}
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -105,13 +114,6 @@ fun ScheduleApp() {
     val lesson3Subject = stringResource(R.string.lesson_3_subject)
     val lesson3Room = stringResource(R.string.lesson_3_room)
 
-    val newLessonTime = stringResource(R.string.new_lesson_time)
-    val roomNotSpecified = stringResource(R.string.room_not_specified)
-
-    val lessonAddedText = stringResource(R.string.snackbar_lesson_added)
-    val lessonDeletedText = stringResource(R.string.snackbar_lesson_deleted)
-    val emptyInputText = stringResource(R.string.snackbar_empty_input)
-
     val lessons = remember {
         mutableStateListOf(
             Lesson(lesson1Time, lesson1Subject, lesson1Room),
@@ -120,16 +122,155 @@ fun ScheduleApp() {
         )
     }
 
-    val lessonCountText = pluralStringResource(
-        R.plurals.lesson_count,
-        lessons.size,
-        lessons.size
-    )
+    var screen by remember { mutableStateOf<Screen>(Screen.Schedule) }
+
+    val snackbarHostState = remember { SnackbarHostState() }
+    val scope = rememberCoroutineScope()
+
+    val title = when (screen) {
+        Screen.Schedule -> stringResource(R.string.schedule_title)
+        Screen.About -> stringResource(R.string.about_title)
+        is Screen.Details -> stringResource(R.string.lesson_details_title)
+    }
+
+    if (screen is Screen.Details) {
+        BackHandler {
+            screen = Screen.Schedule
+        }
+    }
+
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = {
+                    Text(title)
+                },
+                navigationIcon = {
+                    if (screen is Screen.Details) {
+                        TextButton(
+                            onClick = {
+                                screen = Screen.Schedule
+                            }
+                        ) {
+                            Text(stringResource(R.string.back_action))
+                        }
+                    }
+                },
+                actions = {
+                    if (screen == Screen.Schedule) {
+                        val lessonCountText = pluralStringResource(
+                            R.plurals.lesson_count,
+                            lessons.size,
+                            lessons.size
+                        )
+
+                        TextButton(
+                            onClick = {
+                                scope.launch {
+                                    snackbarHostState.showSnackbar(
+                                        message = lessonCountText,
+                                        duration = SnackbarDuration.Short
+                                    )
+                                }
+                            }
+                        ) {
+                            Text(stringResource(R.string.info_action))
+                        }
+                    }
+                }
+            )
+        },
+        snackbarHost = {
+            SnackbarHost(snackbarHostState)
+        },
+        bottomBar = {
+            if (screen !is Screen.Details) {
+                BottomNavigation(
+                    currentScreen = screen,
+                    onNavigate = {
+                        screen = it
+                    }
+                )
+            }
+        }
+    ) { contentPadding ->
+        when (val currentScreen = screen) {
+            Screen.Schedule -> {
+                ScheduleScreen(
+                    lessons = lessons,
+                    contentPadding = contentPadding,
+                    snackbarHostState = snackbarHostState,
+                    onOpenDetails = { index ->
+                        screen = Screen.Details(index)
+                    }
+                )
+            }
+
+            Screen.About -> {
+                AboutScreen(contentPadding)
+            }
+
+            is Screen.Details -> {
+                LessonDetailsScreen(
+                    lesson = lessons.getOrNull(currentScreen.lessonIndex),
+                    contentPadding = contentPadding
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun BottomNavigation(
+    currentScreen: Screen,
+    onNavigate: (Screen) -> Unit
+) {
+    NavigationBar {
+        NavigationBarItem(
+            selected = currentScreen == Screen.Schedule,
+            onClick = {
+                onNavigate(Screen.Schedule)
+            },
+            icon = {
+                Text("Р")
+            },
+            label = {
+                Text(stringResource(R.string.nav_schedule))
+            }
+        )
+
+        NavigationBarItem(
+            selected = currentScreen == Screen.About,
+            onClick = {
+                onNavigate(Screen.About)
+            },
+            icon = {
+                Text("О")
+            },
+            label = {
+                Text(stringResource(R.string.nav_about))
+            }
+        )
+    }
+}
+
+@Composable
+fun ScheduleScreen(
+    lessons: MutableList<Lesson>,
+    contentPadding: PaddingValues,
+    snackbarHostState: SnackbarHostState,
+    onOpenDetails: (Int) -> Unit
+) {
+    val newLessonTime = stringResource(R.string.new_lesson_time)
+    val roomNotSpecified = stringResource(R.string.room_not_specified)
+
+    val lessonAddedText = stringResource(R.string.snackbar_lesson_added)
+    val lessonDeletedText = stringResource(R.string.snackbar_lesson_deleted)
+    val emptyInputText = stringResource(R.string.snackbar_empty_input)
 
     var newLessonSubject by remember { mutableStateOf("") }
     var lessonToDeleteIndex by remember { mutableStateOf<Int?>(null) }
 
-    val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
 
     fun addLesson() {
@@ -160,95 +301,61 @@ fun ScheduleApp() {
         }
     }
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = {
-                    Text(stringResource(R.string.schedule_title))
-                },
-                actions = {
-                    TextButton(
-                        onClick = {
-                            scope.launch {
-                                snackbarHostState.showSnackbar(
-                                    message = lessonCountText,
-                                    duration = SnackbarDuration.Short
-                                )
-                            }
-                        }
-                    ) {
-                        Text(stringResource(R.string.info_action))
-                    }
-                }
-            )
-        },
-        snackbarHost = {
-            SnackbarHost(snackbarHostState)
-        },
-        floatingActionButton = {
-            FloatingActionButton(
-                onClick = {
-                    addLesson()
-                }
+    BoxWithConstraints(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(contentPadding)
+            .padding(horizontal = 8.dp)
+    ) {
+        val isWideScreen = maxWidth >= 600.dp
+
+        if (isWideScreen) {
+            Row(
+                modifier = Modifier.fillMaxSize()
             ) {
-                Text(stringResource(R.string.add_lesson_short))
+                LessonInput(
+                    value = newLessonSubject,
+                    onValueChange = { newLessonSubject = it },
+                    onAdd = { addLesson() },
+                    modifier = Modifier
+                        .weight(1f)
+                        .padding(end = 8.dp)
+                )
+
+                LessonList(
+                    lessons = lessons,
+                    onCompletedChange = { index, checked ->
+                        lessons[index] = lessons[index].copy(completed = checked)
+                    },
+                    onDeleteClick = { index ->
+                        lessonToDeleteIndex = index
+                    },
+                    onOpenDetails = onOpenDetails,
+                    modifier = Modifier.weight(2f)
+                )
             }
-        }
-    ) { contentPadding ->
-        BoxWithConstraints(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(contentPadding)
-                .padding(horizontal = 8.dp)
-        ) {
-            val isWideScreen = maxWidth >= 600.dp
+        } else {
+            Column(
+                modifier = Modifier.fillMaxSize()
+            ) {
+                LessonInput(
+                    value = newLessonSubject,
+                    onValueChange = { newLessonSubject = it },
+                    onAdd = { addLesson() },
+                    modifier = Modifier.fillMaxWidth()
+                )
 
-            if (isWideScreen) {
-                Row(
+                LessonList(
+                    lessons = lessons,
+                    onCompletedChange = { index, checked ->
+                        lessons[index] = lessons[index].copy(completed = checked)
+                    },
+                    onDeleteClick = { index ->
+                        lessonToDeleteIndex = index
+                    },
+                    onOpenDetails = onOpenDetails,
                     modifier = Modifier.fillMaxSize()
-                ) {
-                    LessonInput(
-                        value = newLessonSubject,
-                        onValueChange = { newLessonSubject = it },
-                        onAdd = { addLesson() },
-                        modifier = Modifier
-                            .weight(1f)
-                            .padding(end = 8.dp)
-                    )
-
-                    LessonList(
-                        lessons = lessons,
-                        onCompletedChange = { index, checked ->
-                            lessons[index] = lessons[index].copy(completed = checked)
-                        },
-                        onDeleteClick = { index ->
-                            lessonToDeleteIndex = index
-                        },
-                        modifier = Modifier.weight(2f)
-                    )
-                }
-            } else {
-                Column(
-                    modifier = Modifier.fillMaxSize()
-                ) {
-                    LessonInput(
-                        value = newLessonSubject,
-                        onValueChange = { newLessonSubject = it },
-                        onAdd = { addLesson() },
-                        modifier = Modifier.fillMaxWidth()
-                    )
-
-                    LessonList(
-                        lessons = lessons,
-                        onCompletedChange = { index, checked ->
-                            lessons[index] = lessons[index].copy(completed = checked)
-                        },
-                        onDeleteClick = { index ->
-                            lessonToDeleteIndex = index
-                        },
-                        modifier = Modifier.fillMaxSize()
-                    )
-                }
+                )
             }
         }
     }
@@ -338,6 +445,7 @@ fun LessonList(
     lessons: List<Lesson>,
     onCompletedChange: (Int, Boolean) -> Unit,
     onDeleteClick: (Int) -> Unit,
+    onOpenDetails: (Int) -> Unit,
     modifier: Modifier = Modifier
 ) {
     LazyColumn(
@@ -364,6 +472,9 @@ fun LessonList(
                 },
                 onDelete = {
                     onDeleteClick(index)
+                },
+                onOpenDetails = {
+                    onOpenDetails(index)
                 }
             )
         }
@@ -374,12 +485,16 @@ fun LessonList(
 fun LessonElement(
     lesson: Lesson,
     onCompletedChange: (Boolean) -> Unit,
-    onDelete: () -> Unit
+    onDelete: () -> Unit,
+    onOpenDetails: () -> Unit
 ) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
             .padding(bottom = 8.dp)
+            .clickable {
+                onOpenDetails()
+            }
     ) {
         Row(
             modifier = Modifier.padding(12.dp),
@@ -416,6 +531,60 @@ fun LessonElement(
                 Text(stringResource(R.string.delete_lesson))
             }
         }
+    }
+}
+
+@Composable
+fun LessonDetailsScreen(
+    lesson: Lesson?,
+    contentPadding: PaddingValues
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(contentPadding)
+            .padding(16.dp)
+    ) {
+        if (lesson == null) {
+            Text(stringResource(R.string.lesson_not_found))
+        } else {
+            val status = if (lesson.completed) {
+                stringResource(R.string.status_completed)
+            } else {
+                stringResource(R.string.status_not_completed)
+            }
+
+            Text(
+                text = lesson.subject,
+                style = MaterialTheme.typography.headlineSmall,
+                fontWeight = FontWeight.Bold
+            )
+
+            Text(stringResource(R.string.time_label, lesson.time))
+            Text(stringResource(R.string.room_label, lesson.room))
+            Text(stringResource(R.string.status_label, status))
+        }
+    }
+}
+
+@Composable
+fun AboutScreen(contentPadding: PaddingValues) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(contentPadding)
+            .padding(16.dp)
+    ) {
+        Text(
+            text = stringResource(R.string.about_title),
+            style = MaterialTheme.typography.headlineSmall,
+            fontWeight = FontWeight.Bold
+        )
+
+        Text(
+            text = stringResource(R.string.about_text),
+            modifier = Modifier.padding(top = 8.dp)
+        )
     }
 }
 

@@ -2,11 +2,26 @@
     <string name="app_name">Tasktracker</string>
 
     <string name="schedule_title">Расписание занятий</string>
+    <string name="about_title">О приложении</string>
+    <string name="lesson_details_title">Детали занятия</string>
+
+    <string name="nav_schedule">Расписание</string>
+    <string name="nav_about">О приложении</string>
+
+    <string name="back_action">Назад</string>
+    <string name="details_action">Подробнее</string>
+
     <string name="lesson_input_label">Название занятия</string>
     <string name="add_lesson_short">+</string>
     <string name="delete_lesson">Удалить</string>
+
     <string name="time_label">Время: %1$s</string>
     <string name="room_label">Аудитория: %1$s</string>
+    <string name="status_label">Статус: %1$s</string>
+    <string name="status_completed">отмечено</string>
+    <string name="status_not_completed">не отмечено</string>
+    <string name="lesson_not_found">Занятие не найдено</string>
+
     <string name="new_lesson_time">Новая</string>
     <string name="room_not_specified">Не указана</string>
 
@@ -21,6 +36,8 @@
     <string name="lesson_3_time">12:20</string>
     <string name="lesson_3_subject">Мобильная разработка</string>
     <string name="lesson_3_room">210</string>
+
+    <string name="about_text">Приложение показывает расписание занятий и демонстрирует навигацию между экранами.</string>
 
     <string name="info_action">Инфо</string>
     <string name="cancel_action">Отмена</string>
