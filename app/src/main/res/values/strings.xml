@@ -22,6 +22,11 @@
     <string name="status_not_completed">не отмечено</string>
     <string name="lesson_not_found">Занятие не найдено</string>
 
+    <string name="load_from_internet">Загрузить данные из интернета</string>
+    <string name="loading">Загрузка...</string>
+    <string name="request_error">Ошибка при загрузке данных</string>
+    <string name="request_success">Ответ сервера:</string>
+
     <string name="new_lesson_time">Новая</string>
     <string name="room_not_specified">Не указана</string>
 
@@ -37,7 +42,7 @@
     <string name="lesson_3_subject">Мобильная разработка</string>
     <string name="lesson_3_room">210</string>
 
-    <string name="about_text">Приложение показывает расписание занятий и демонстрирует навигацию между экранами.</string>
+    <string name="about_text">Приложение показывает расписание занятий, навигацию между экранами и интернет-запросы.</string>
 
     <string name="info_action">Инфо</string>
     <string name="cancel_action">Отмена</string>

@@ -21,6 +21,7 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.Checkbox
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
@@ -53,6 +54,12 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import io.ktor.client.HttpClient
+import io.ktor.client.engine.cio.CIO
+import io.ktor.client.request.get
+import io.ktor.client.request.parameter
+import io.ktor.client.statement.bodyAsText
+import io.ktor.http.isSuccess
 import kotlinx.coroutines.launch
 
 data class Lesson(
@@ -66,6 +73,17 @@ sealed interface Screen {
     data object Schedule : Screen
     data object About : Screen
     data class Details(val lessonIndex: Int) : Screen
+}
+
+sealed interface RequestState {
+    data object Idle : RequestState
+    data object Loading : RequestState
+    data object Error : RequestState
+    data class Success(val value: String) : RequestState
+}
+
+object NetworkClient {
+    val httpClient = HttpClient(CIO)
 }
 
 class MainActivity : ComponentActivity() {
@@ -539,6 +557,9 @@ fun LessonDetailsScreen(
     lesson: Lesson?,
     contentPadding: PaddingValues
 ) {
+    var requestState by remember { mutableStateOf<RequestState>(RequestState.Idle) }
+    val scope = rememberCoroutineScope()
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -563,6 +584,62 @@ fun LessonDetailsScreen(
             Text(stringResource(R.string.time_label, lesson.time))
             Text(stringResource(R.string.room_label, lesson.room))
             Text(stringResource(R.string.status_label, status))
+
+            Button(
+                onClick = {
+                    scope.launch {
+                        requestState = RequestState.Loading
+
+                        requestState = try {
+                            val response = NetworkClient.httpClient.get("https://postman-echo.com/get") {
+                                parameter("lesson", lesson.subject)
+                                parameter("room", lesson.room)
+                            }
+
+                            if (response.status.isSuccess()) {
+                                RequestState.Success(response.bodyAsText())
+                            } else {
+                                RequestState.Error
+                            }
+                        } catch (e: Exception) {
+                            RequestState.Error
+                        }
+                    }
+                },
+                modifier = Modifier.padding(top = 16.dp)
+            ) {
+                Text(stringResource(R.string.load_from_internet))
+            }
+
+            when (val state = requestState) {
+                RequestState.Idle -> Unit
+
+                RequestState.Loading -> {
+                    CircularProgressIndicator(
+                        modifier = Modifier.padding(top = 16.dp)
+                    )
+                }
+
+                RequestState.Error -> {
+                    Text(
+                        text = stringResource(R.string.request_error),
+                        modifier = Modifier.padding(top = 16.dp)
+                    )
+                }
+
+                is RequestState.Success -> {
+                    Text(
+                        text = stringResource(R.string.request_success),
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.padding(top = 16.dp)
+                    )
+
+                    Text(
+                        text = state.value,
+                        modifier = Modifier.padding(top = 8.dp)
+                    )
+                }
+            }
         }
     }
 }
