@@ -1,12 +1,18 @@
 package com.example.task_tracker
 
+import android.Manifest
 import android.content.Context
+import android.content.pm.PackageManager
+import android.hardware.Sensor
+import android.hardware.SensorManager
 import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
+import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -57,6 +63,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.core.content.ContextCompat
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.edit
@@ -98,6 +105,7 @@ sealed interface Screen {
     data object Schedule : Screen
     data object About : Screen
     data object Settings : Screen
+    data object Permissions : Screen
     data class Details(val lessonIndex: Int) : Screen
 }
 
@@ -198,6 +206,7 @@ fun ScheduleApp(
         Screen.Schedule -> stringResource(R.string.schedule_title)
         Screen.About -> stringResource(R.string.about_title)
         Screen.Settings -> stringResource(R.string.settings_title)
+        Screen.Permissions -> stringResource(R.string.permissions_title)
         is Screen.Details -> stringResource(R.string.lesson_details_title)
     }
 
@@ -286,6 +295,10 @@ fun ScheduleApp(
                 )
             }
 
+            Screen.Permissions -> {
+                PermissionsScreen(contentPadding)
+            }
+
             is Screen.Details -> {
                 LessonDetailsScreen(
                     lesson = lessons.getOrNull(currentScreen.lessonIndex),
@@ -338,6 +351,19 @@ fun BottomNavigation(
             },
             label = {
                 Text(stringResource(R.string.nav_settings))
+            }
+        )
+
+        NavigationBarItem(
+            selected = currentScreen == Screen.Permissions,
+            onClick = {
+                onNavigate(Screen.Permissions)
+            },
+            icon = {
+                Text("Д")
+            },
+            label = {
+                Text(stringResource(R.string.nav_permissions))
             }
         )
     }
@@ -820,6 +846,217 @@ fun ThemeOption(
             modifier = Modifier.padding(start = 8.dp)
         )
     }
+}
+
+@Composable
+fun PermissionsScreen(contentPadding: PaddingValues) {
+    val context = LocalContext.current
+
+    var cameraGranted by remember {
+        mutableStateOf(
+            ContextCompat.checkSelfPermission(
+                context,
+                Manifest.permission.CAMERA
+            ) == PackageManager.PERMISSION_GRANTED
+        )
+    }
+
+    var microphoneGranted by remember {
+        mutableStateOf(
+            ContextCompat.checkSelfPermission(
+                context,
+                Manifest.permission.RECORD_AUDIO
+            ) == PackageManager.PERMISSION_GRANTED
+        )
+    }
+
+    var locationGranted by remember {
+        mutableStateOf(
+            ContextCompat.checkSelfPermission(
+                context,
+                Manifest.permission.ACCESS_FINE_LOCATION
+            ) == PackageManager.PERMISSION_GRANTED
+        )
+    }
+
+    val cameraLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission()
+    ) { granted ->
+        cameraGranted = granted
+    }
+
+    val microphoneLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission()
+    ) { granted ->
+        microphoneGranted = granted
+    }
+
+    val locationLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission()
+    ) { granted ->
+        locationGranted = granted
+    }
+
+    val sensorManager = remember {
+        context.getSystemService(Context.SENSOR_SERVICE) as SensorManager
+    }
+
+    val hasAccelerometer = remember {
+        sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER) != null
+    }
+
+    val hasGyroscope = remember {
+        sensorManager.getDefaultSensor(Sensor.TYPE_GYROSCOPE) != null
+    }
+
+    val hasLightSensor = remember {
+        sensorManager.getDefaultSensor(Sensor.TYPE_LIGHT) != null
+    }
+
+    LazyColumn(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(contentPadding)
+            .padding(16.dp),
+        contentPadding = PaddingValues(bottom = 24.dp)
+    ) {
+        item {
+            PermissionCard(
+                title = stringResource(R.string.permission_camera),
+                granted = cameraGranted,
+                onRequest = {
+                    cameraLauncher.launch(Manifest.permission.CAMERA)
+                }
+            )
+        }
+
+        item {
+            PermissionCard(
+                title = stringResource(R.string.permission_microphone),
+                granted = microphoneGranted,
+                onRequest = {
+                    microphoneLauncher.launch(Manifest.permission.RECORD_AUDIO)
+                }
+            )
+        }
+
+        item {
+            PermissionCard(
+                title = stringResource(R.string.permission_location),
+                granted = locationGranted,
+                onRequest = {
+                    locationLauncher.launch(Manifest.permission.ACCESS_FINE_LOCATION)
+                }
+            )
+        }
+
+        item {
+            SensorCard(
+                accelerometerAvailable = hasAccelerometer,
+                gyroscopeAvailable = hasGyroscope,
+                lightSensorAvailable = hasLightSensor
+            )
+        }
+    }
+}
+
+@Composable
+fun PermissionCard(
+    title: String,
+    granted: Boolean,
+    onRequest: () -> Unit
+) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(bottom = 8.dp)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(12.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column(
+                modifier = Modifier.weight(1f)
+            ) {
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold
+                )
+
+                Text(
+                    text = if (granted) {
+                        stringResource(R.string.permission_granted)
+                    } else {
+                        stringResource(R.string.permission_denied)
+                    }
+                )
+            }
+
+            Button(
+                onClick = onRequest,
+                enabled = !granted
+            ) {
+                Text(stringResource(R.string.permission_request))
+            }
+        }
+    }
+}
+
+@Composable
+fun SensorCard(
+    accelerometerAvailable: Boolean,
+    gyroscopeAvailable: Boolean,
+    lightSensorAvailable: Boolean
+) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(bottom = 8.dp)
+    ) {
+        Column(
+            modifier = Modifier.padding(12.dp)
+        ) {
+            Text(
+                text = stringResource(R.string.permission_sensors),
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold
+            )
+
+            SensorRow(
+                name = stringResource(R.string.sensor_accelerometer),
+                available = accelerometerAvailable
+            )
+
+            SensorRow(
+                name = stringResource(R.string.sensor_gyroscope),
+                available = gyroscopeAvailable
+            )
+
+            SensorRow(
+                name = stringResource(R.string.sensor_light),
+                available = lightSensorAvailable
+            )
+        }
+    }
+}
+
+@Composable
+fun SensorRow(
+    name: String,
+    available: Boolean
+) {
+    Text(
+        text = "$name: ${
+            if (available) {
+                stringResource(R.string.sensor_available)
+            } else {
+                stringResource(R.string.sensor_not_available)
+            }
+        }"
+    )
 }
 
 @Preview(showBackground = true)

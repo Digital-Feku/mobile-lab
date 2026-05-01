@@ -64,4 +64,22 @@
         <item quantity="many">%1$d занятий</item>
         <item quantity="other">%1$d занятий</item>
     </plurals>
+
+    <string name="permissions_title">Разрешения</string>
+    <string name="nav_permissions">Разрешения</string>
+
+    <string name="permission_camera">Камера</string>
+    <string name="permission_microphone">Микрофон</string>
+    <string name="permission_location">GPS</string>
+    <string name="permission_sensors">Сенсоры</string>
+
+    <string name="permission_granted">Разрешено</string>
+    <string name="permission_denied">Не разрешено</string>
+    <string name="permission_request">Запросить</string>
+
+    <string name="sensor_available">Доступен</string>
+    <string name="sensor_not_available">Недоступен</string>
+    <string name="sensor_accelerometer">Акселерометр</string>
+    <string name="sensor_gyroscope">Гироскоп</string>
+    <string name="sensor_light">Датчик освещённости</string>
 </resources>
