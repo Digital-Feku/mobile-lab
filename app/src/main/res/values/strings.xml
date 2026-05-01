@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">Tasktracker</string>
+    <string name="app_name">Расписание занятий</string>
 
     <string name="schedule_title">Расписание занятий</string>
     <string name="about_title">О приложении</string>
