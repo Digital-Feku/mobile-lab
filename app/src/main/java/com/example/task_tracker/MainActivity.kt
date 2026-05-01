@@ -9,21 +9,31 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.material3.Button
 import androidx.compose.material3.Card
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextDecoration
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 
 data class Lesson(
     val time: String,
     val subject: String,
     val room: String,
-    val teacher: String
+    val completed: Boolean = false
 )
 
 class MainActivity : ComponentActivity() {
@@ -40,32 +50,27 @@ class MainActivity : ComponentActivity() {
 fun ScheduleApp() {
     MaterialTheme {
         val lessons = remember {
-            listOf(
+            mutableStateListOf(
                 Lesson(
                     time = "09:00",
                     subject = "Основы Kotlin",
-                    room = "Ауд. 204",
-                    teacher = "Иванов И.И."
+                    room = "204"
                 ),
                 Lesson(
                     time = "10:40",
                     subject = "Jetpack Compose",
-                    room = "Ауд. 305",
-                    teacher = "Петров П.П."
+                    room = "305"
                 ),
                 Lesson(
                     time = "12:20",
                     subject = "Мобильная разработка",
-                    room = "Ауд. 210",
-                    teacher = "Сидоров С.С."
-                ),
-                Lesson(
-                    time = "14:00",
-                    subject = "Базы данных",
-                    room = "Ауд. 112",
-                    teacher = "Кузнецова А.А."
+                    room = "210"
                 )
             )
+        }
+
+        var newLessonSubject by remember {
+            mutableStateOf("")
         }
 
         Column(
@@ -79,15 +84,55 @@ fun ScheduleApp() {
                 fontWeight = FontWeight.Bold
             )
 
-            Text(
-                text = "Лабораторная работа: основы разметки Compose",
-                style = MaterialTheme.typography.bodyMedium,
-                modifier = Modifier.padding(bottom = 16.dp)
-            )
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 12.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                OutlinedTextField(
+                    value = newLessonSubject,
+                    onValueChange = {
+                        newLessonSubject = it
+                    },
+                    label = {
+                        Text("Название занятия")
+                    },
+                    modifier = Modifier
+                        .weight(1f)
+                        .padding(end = 8.dp)
+                )
+
+                Button(
+                    onClick = {
+                        if (newLessonSubject.isNotBlank()) {
+                            lessons.add(
+                                Lesson(
+                                    time = "Новая",
+                                    subject = newLessonSubject.trim(),
+                                    room = "Не указана"
+                                )
+                            )
+
+                            newLessonSubject = ""
+                        }
+                    }
+                ) {
+                    Text("+")
+                }
+            }
 
             LazyColumn {
-                items(lessons) { lesson ->
-                    LessonCard(lesson)
+                itemsIndexed(lessons) { index, lesson ->
+                    LessonElement(
+                        lesson = lesson,
+                        onCompletedChange = { checked ->
+                            lessons[index] = lesson.copy(completed = checked)
+                        },
+                        onDelete = {
+                            lessons.removeAt(index)
+                        }
+                    )
                 }
             }
         }
@@ -95,31 +140,61 @@ fun ScheduleApp() {
 }
 
 @Composable
-fun LessonCard(lesson: Lesson) {
+fun LessonElement(
+    lesson: Lesson,
+    onCompletedChange: (Boolean) -> Unit,
+    onDelete: () -> Unit
+) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
             .padding(bottom = 8.dp)
     ) {
         Row(
-            modifier = Modifier.padding(12.dp)
+            modifier = Modifier.padding(12.dp),
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            Text(
-                text = lesson.time,
-                fontWeight = FontWeight.Bold,
-                modifier = Modifier.padding(end = 16.dp)
+            Checkbox(
+                checked = lesson.completed,
+                onCheckedChange = onCompletedChange
             )
 
-            Column {
+            Column(
+                modifier = Modifier
+                    .weight(1f)
+                    .padding(start = 8.dp)
+            ) {
                 Text(
                     text = lesson.subject,
                     style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold
+                    fontWeight = FontWeight.Bold,
+                    textDecoration = if (lesson.completed) {
+                        TextDecoration.LineThrough
+                    } else {
+                        TextDecoration.None
+                    }
                 )
 
-                Text(text = "Кабинет: ${lesson.room}")
-                Text(text = "Преподаватель: ${lesson.teacher}")
+                Text(
+                    text = "Время: ${lesson.time}"
+                )
+
+                Text(
+                    text = "Аудитория: ${lesson.room}"
+                )
+            }
+
+            Button(
+                onClick = onDelete
+            ) {
+                Text("Удалить")
             }
         }
     }
+}
+
+@Preview(showBackground = true)
+@Composable
+fun ScheduleAppPreview() {
+    ScheduleApp()
 }
