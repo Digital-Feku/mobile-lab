@@ -1,3 +1,31 @@
 <resources>
-    <string name="app_name">Task-tracker</string>
+    <string name="app_name">Tasktracker</string>
+
+    <string name="schedule_title">Расписание занятий</string>
+    <string name="lesson_input_label">Название занятия</string>
+    <string name="add_lesson_short">+</string>
+    <string name="delete_lesson">Удалить</string>
+    <string name="time_label">Время: %1$s</string>
+    <string name="room_label">Аудитория: %1$s</string>
+    <string name="new_lesson_time">Новая</string>
+    <string name="room_not_specified">Не указана</string>
+
+    <string name="lesson_1_time">09:00</string>
+    <string name="lesson_1_subject">Основы Kotlin</string>
+    <string name="lesson_1_room">204</string>
+
+    <string name="lesson_2_time">10:40</string>
+    <string name="lesson_2_subject">Jetpack Compose</string>
+    <string name="lesson_2_room">305</string>
+
+    <string name="lesson_3_time">12:20</string>
+    <string name="lesson_3_subject">Мобильная разработка</string>
+    <string name="lesson_3_room">210</string>
+
+    <plurals name="lesson_count">
+        <item quantity="one">%1$d занятие</item>
+        <item quantity="few">%1$d занятия</item>
+        <item quantity="many">%1$d занятий</item>
+        <item quantity="other">%1$d занятий</item>
+    </plurals>
 </resources>

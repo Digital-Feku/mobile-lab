@@ -24,6 +24,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.pluralStringResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.tooling.preview.Preview
@@ -49,22 +51,37 @@ class MainActivity : ComponentActivity() {
 @Composable
 fun ScheduleApp() {
     MaterialTheme {
+        val lesson1Time = stringResource(R.string.lesson_1_time)
+        val lesson1Subject = stringResource(R.string.lesson_1_subject)
+        val lesson1Room = stringResource(R.string.lesson_1_room)
+
+        val lesson2Time = stringResource(R.string.lesson_2_time)
+        val lesson2Subject = stringResource(R.string.lesson_2_subject)
+        val lesson2Room = stringResource(R.string.lesson_2_room)
+
+        val lesson3Time = stringResource(R.string.lesson_3_time)
+        val lesson3Subject = stringResource(R.string.lesson_3_subject)
+        val lesson3Room = stringResource(R.string.lesson_3_room)
+
+        val newLessonTime = stringResource(R.string.new_lesson_time)
+        val roomNotSpecified = stringResource(R.string.room_not_specified)
+
         val lessons = remember {
             mutableStateListOf(
                 Lesson(
-                    time = "09:00",
-                    subject = "Основы Kotlin",
-                    room = "204"
+                    time = lesson1Time,
+                    subject = lesson1Subject,
+                    room = lesson1Room
                 ),
                 Lesson(
-                    time = "10:40",
-                    subject = "Jetpack Compose",
-                    room = "305"
+                    time = lesson2Time,
+                    subject = lesson2Subject,
+                    room = lesson2Room
                 ),
                 Lesson(
-                    time = "12:20",
-                    subject = "Мобильная разработка",
-                    room = "210"
+                    time = lesson3Time,
+                    subject = lesson3Subject,
+                    room = lesson3Room
                 )
             )
         }
@@ -79,9 +96,19 @@ fun ScheduleApp() {
                 .padding(16.dp)
         ) {
             Text(
-                text = "Расписание занятий",
+                text = stringResource(R.string.schedule_title),
                 style = MaterialTheme.typography.headlineSmall,
                 fontWeight = FontWeight.Bold
+            )
+
+            Text(
+                text = pluralStringResource(
+                    R.plurals.lesson_count,
+                    lessons.size,
+                    lessons.size
+                ),
+                style = MaterialTheme.typography.bodyMedium,
+                modifier = Modifier.padding(bottom = 12.dp)
             )
 
             Row(
@@ -96,7 +123,7 @@ fun ScheduleApp() {
                         newLessonSubject = it
                     },
                     label = {
-                        Text("Название занятия")
+                        Text(stringResource(R.string.lesson_input_label))
                     },
                     modifier = Modifier
                         .weight(1f)
@@ -108,9 +135,9 @@ fun ScheduleApp() {
                         if (newLessonSubject.isNotBlank()) {
                             lessons.add(
                                 Lesson(
-                                    time = "Новая",
+                                    time = newLessonTime,
                                     subject = newLessonSubject.trim(),
-                                    room = "Не указана"
+                                    room = roomNotSpecified
                                 )
                             )
 
@@ -118,7 +145,7 @@ fun ScheduleApp() {
                         }
                     }
                 ) {
-                    Text("+")
+                    Text(stringResource(R.string.add_lesson_short))
                 }
             }
 
@@ -176,18 +203,18 @@ fun LessonElement(
                 )
 
                 Text(
-                    text = "Время: ${lesson.time}"
+                    text = stringResource(R.string.time_label, lesson.time)
                 )
 
                 Text(
-                    text = "Аудитория: ${lesson.room}"
+                    text = stringResource(R.string.room_label, lesson.room)
                 )
             }
 
             Button(
                 onClick = onDelete
             ) {
-                Text("Удалить")
+                Text(stringResource(R.string.delete_lesson))
             }
         }
     }
