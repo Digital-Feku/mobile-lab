@@ -1,8 +1,11 @@
 package com.example.task_tracker
 
+import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.activity.enableEdgeToEdge
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
@@ -15,7 +18,12 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.darkColorScheme
+import androidx.compose.material3.dynamicDarkColorScheme
+import androidx.compose.material3.dynamicLightColorScheme
+import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
@@ -24,6 +32,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -40,59 +49,88 @@ data class Lesson(
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
+        enableEdgeToEdge()
         super.onCreate(savedInstanceState)
 
         setContent {
-            ScheduleApp()
+            ScheduleTheme {
+                ScheduleApp()
+            }
         }
     }
 }
 
 @Composable
+fun ScheduleTheme(content: @Composable () -> Unit) {
+    val context = LocalContext.current
+    val darkTheme = isSystemInDarkTheme()
+
+    val colorScheme = when {
+        Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && darkTheme -> {
+            dynamicDarkColorScheme(context)
+        }
+
+        Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && !darkTheme -> {
+            dynamicLightColorScheme(context)
+        }
+
+        darkTheme -> darkColorScheme()
+
+        else -> lightColorScheme()
+    }
+
+    MaterialTheme(
+        colorScheme = colorScheme,
+        content = content
+    )
+}
+
+@Composable
 fun ScheduleApp() {
-    MaterialTheme {
-        val lesson1Time = stringResource(R.string.lesson_1_time)
-        val lesson1Subject = stringResource(R.string.lesson_1_subject)
-        val lesson1Room = stringResource(R.string.lesson_1_room)
+    val lesson1Time = stringResource(R.string.lesson_1_time)
+    val lesson1Subject = stringResource(R.string.lesson_1_subject)
+    val lesson1Room = stringResource(R.string.lesson_1_room)
 
-        val lesson2Time = stringResource(R.string.lesson_2_time)
-        val lesson2Subject = stringResource(R.string.lesson_2_subject)
-        val lesson2Room = stringResource(R.string.lesson_2_room)
+    val lesson2Time = stringResource(R.string.lesson_2_time)
+    val lesson2Subject = stringResource(R.string.lesson_2_subject)
+    val lesson2Room = stringResource(R.string.lesson_2_room)
 
-        val lesson3Time = stringResource(R.string.lesson_3_time)
-        val lesson3Subject = stringResource(R.string.lesson_3_subject)
-        val lesson3Room = stringResource(R.string.lesson_3_room)
+    val lesson3Time = stringResource(R.string.lesson_3_time)
+    val lesson3Subject = stringResource(R.string.lesson_3_subject)
+    val lesson3Room = stringResource(R.string.lesson_3_room)
 
-        val newLessonTime = stringResource(R.string.new_lesson_time)
-        val roomNotSpecified = stringResource(R.string.room_not_specified)
+    val newLessonTime = stringResource(R.string.new_lesson_time)
+    val roomNotSpecified = stringResource(R.string.room_not_specified)
 
-        val lessons = remember {
-            mutableStateListOf(
-                Lesson(
-                    time = lesson1Time,
-                    subject = lesson1Subject,
-                    room = lesson1Room
-                ),
-                Lesson(
-                    time = lesson2Time,
-                    subject = lesson2Subject,
-                    room = lesson2Room
-                ),
-                Lesson(
-                    time = lesson3Time,
-                    subject = lesson3Subject,
-                    room = lesson3Room
-                )
+    val lessons = remember {
+        mutableStateListOf(
+            Lesson(
+                time = lesson1Time,
+                subject = lesson1Subject,
+                room = lesson1Room
+            ),
+            Lesson(
+                time = lesson2Time,
+                subject = lesson2Subject,
+                room = lesson2Room
+            ),
+            Lesson(
+                time = lesson3Time,
+                subject = lesson3Subject,
+                room = lesson3Room
             )
-        }
+        )
+    }
 
-        var newLessonSubject by remember {
-            mutableStateOf("")
-        }
+    var newLessonSubject by remember {
+        mutableStateOf("")
+    }
 
+    Scaffold { contentPadding ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
+                .padding(contentPadding)
                 .padding(16.dp)
         ) {
             Text(
@@ -223,5 +261,7 @@ fun LessonElement(
 @Preview(showBackground = true)
 @Composable
 fun ScheduleAppPreview() {
-    ScheduleApp()
+    ScheduleTheme {
+        ScheduleApp()
+    }
 }
