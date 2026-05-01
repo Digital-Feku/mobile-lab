@@ -22,6 +22,15 @@
     <string name="lesson_3_subject">Мобильная разработка</string>
     <string name="lesson_3_room">210</string>
 
+    <string name="info_action">Инфо</string>
+    <string name="cancel_action">Отмена</string>
+    <string name="confirm_delete_action">Удалить</string>
+    <string name="delete_dialog_title">Удалить занятие?</string>
+    <string name="delete_dialog_text">Это действие нельзя отменить.</string>
+    <string name="snackbar_lesson_added">Занятие добавлено</string>
+    <string name="snackbar_lesson_deleted">Занятие удалено</string>
+    <string name="snackbar_empty_input">Введите название занятия</string>
+
     <plurals name="lesson_count">
         <item quantity="one">%1$d занятие</item>
         <item quantity="few">%1$d занятия</item>
