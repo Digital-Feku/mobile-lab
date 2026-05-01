@@ -1,5 +1,6 @@
 package com.example.task_tracker
 
+import android.content.Context
 import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
@@ -27,6 +28,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHost
@@ -39,6 +41,7 @@ import androidx.compose.material3.dynamicDarkColorScheme
 import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
@@ -54,13 +57,35 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.datastore.core.DataStore
+import androidx.datastore.preferences.core.Preferences
+import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.core.intPreferencesKey
+import androidx.datastore.preferences.preferencesDataStore
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.cio.CIO
 import io.ktor.client.request.get
 import io.ktor.client.request.parameter
 import io.ktor.client.statement.bodyAsText
 import io.ktor.http.isSuccess
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
+
+private val Context.settingsDataStore by preferencesDataStore(name = "settings")
+
+private val themeModeKey = intPreferencesKey("theme_mode")
+
+enum class ThemeMode(val value: Int) {
+    SYSTEM(0),
+    LIGHT(1),
+    DARK(2);
+
+    companion object {
+        fun fromValue(value: Int): ThemeMode {
+            return values().firstOrNull { it.value == value } ?: SYSTEM
+        }
+    }
+}
 
 data class Lesson(
     val time: String,
@@ -72,6 +97,7 @@ data class Lesson(
 sealed interface Screen {
     data object Schedule : Screen
     data object About : Screen
+    data object Settings : Screen
     data class Details(val lessonIndex: Int) : Screen
 }
 
@@ -91,18 +117,38 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         super.onCreate(savedInstanceState)
 
+        val dataStore = applicationContext.settingsDataStore
+
         setContent {
-            ScheduleTheme {
-                ScheduleApp()
+            val themeMode by dataStore.data
+                .map { preferences ->
+                    ThemeMode.fromValue(preferences[themeModeKey] ?: ThemeMode.SYSTEM.value)
+                }
+                .collectAsState(initial = ThemeMode.SYSTEM)
+
+            ScheduleTheme(themeMode = themeMode) {
+                ScheduleApp(
+                    themeMode = themeMode,
+                    dataStore = dataStore
+                )
             }
         }
     }
 }
 
 @Composable
-fun ScheduleTheme(content: @Composable () -> Unit) {
+fun ScheduleTheme(
+    themeMode: ThemeMode,
+    content: @Composable () -> Unit
+) {
     val context = LocalContext.current
-    val darkTheme = isSystemInDarkTheme()
+    val systemDarkTheme = isSystemInDarkTheme()
+
+    val darkTheme = when (themeMode) {
+        ThemeMode.SYSTEM -> systemDarkTheme
+        ThemeMode.LIGHT -> false
+        ThemeMode.DARK -> true
+    }
 
     val colorScheme = when {
         Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && darkTheme -> dynamicDarkColorScheme(context)
@@ -119,7 +165,10 @@ fun ScheduleTheme(content: @Composable () -> Unit) {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ScheduleApp() {
+fun ScheduleApp(
+    themeMode: ThemeMode,
+    dataStore: DataStore<Preferences>
+) {
     val lesson1Time = stringResource(R.string.lesson_1_time)
     val lesson1Subject = stringResource(R.string.lesson_1_subject)
     val lesson1Room = stringResource(R.string.lesson_1_room)
@@ -148,6 +197,7 @@ fun ScheduleApp() {
     val title = when (screen) {
         Screen.Schedule -> stringResource(R.string.schedule_title)
         Screen.About -> stringResource(R.string.about_title)
+        Screen.Settings -> stringResource(R.string.settings_title)
         is Screen.Details -> stringResource(R.string.lesson_details_title)
     }
 
@@ -228,6 +278,14 @@ fun ScheduleApp() {
                 AboutScreen(contentPadding)
             }
 
+            Screen.Settings -> {
+                SettingsScreen(
+                    themeMode = themeMode,
+                    dataStore = dataStore,
+                    contentPadding = contentPadding
+                )
+            }
+
             is Screen.Details -> {
                 LessonDetailsScreen(
                     lesson = lessons.getOrNull(currentScreen.lessonIndex),
@@ -267,6 +325,19 @@ fun BottomNavigation(
             },
             label = {
                 Text(stringResource(R.string.nav_about))
+            }
+        )
+
+        NavigationBarItem(
+            selected = currentScreen == Screen.Settings,
+            onClick = {
+                onNavigate(Screen.Settings)
+            },
+            icon = {
+                Text("Н")
+            },
+            label = {
+                Text(stringResource(R.string.nav_settings))
             }
         )
     }
@@ -665,10 +736,101 @@ fun AboutScreen(contentPadding: PaddingValues) {
     }
 }
 
+@Composable
+fun SettingsScreen(
+    themeMode: ThemeMode,
+    dataStore: DataStore<Preferences>,
+    contentPadding: PaddingValues
+) {
+    val scope = rememberCoroutineScope()
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(contentPadding)
+            .padding(16.dp)
+    ) {
+        Text(
+            text = stringResource(R.string.theme_setting_title),
+            style = MaterialTheme.typography.titleLarge,
+            fontWeight = FontWeight.Bold,
+            modifier = Modifier.padding(bottom = 8.dp)
+        )
+
+        ThemeOption(
+            title = stringResource(R.string.theme_system),
+            selected = themeMode == ThemeMode.SYSTEM,
+            onClick = {
+                scope.launch {
+                    dataStore.edit { preferences ->
+                        preferences[themeModeKey] = ThemeMode.SYSTEM.value
+                    }
+                }
+            }
+        )
+
+        ThemeOption(
+            title = stringResource(R.string.theme_light),
+            selected = themeMode == ThemeMode.LIGHT,
+            onClick = {
+                scope.launch {
+                    dataStore.edit { preferences ->
+                        preferences[themeModeKey] = ThemeMode.LIGHT.value
+                    }
+                }
+            }
+        )
+
+        ThemeOption(
+            title = stringResource(R.string.theme_dark),
+            selected = themeMode == ThemeMode.DARK,
+            onClick = {
+                scope.launch {
+                    dataStore.edit { preferences ->
+                        preferences[themeModeKey] = ThemeMode.DARK.value
+                    }
+                }
+            }
+        )
+    }
+}
+
+@Composable
+fun ThemeOption(
+    title: String,
+    selected: Boolean,
+    onClick: () -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable {
+                onClick()
+            }
+            .padding(vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        RadioButton(
+            selected = selected,
+            onClick = onClick
+        )
+
+        Text(
+            text = title,
+            modifier = Modifier.padding(start = 8.dp)
+        )
+    }
+}
+
 @Preview(showBackground = true)
 @Composable
 fun ScheduleAppPreview() {
-    ScheduleTheme {
-        ScheduleApp()
+    ScheduleTheme(themeMode = ThemeMode.SYSTEM) {
+        val context = LocalContext.current
+
+        ScheduleApp(
+            themeMode = ThemeMode.SYSTEM,
+            dataStore = context.settingsDataStore
+        )
     }
 }

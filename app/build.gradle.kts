@@ -59,4 +59,5 @@ dependencies {
     debugImplementation(libs.androidx.compose.ui.test.manifest)
     implementation("io.ktor:ktor-client-core:2.3.12")
     implementation("io.ktor:ktor-client-cio:2.3.12")
+    implementation("androidx.datastore:datastore-preferences:1.1.7")
 }
